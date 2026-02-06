@@ -1,0 +1,41 @@
+{
+  "name": "polarity-labs/observer-agent",
+  "description": "Lightweight server and Laravel application monitoring agent",
+  "keywords": [
+    "laravel",
+    "monitoring",
+    "server",
+    "metrics",
+    "observability"
+  ],
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Polarity Labs"
+    }
+  ],
+  "require": {
+    "php": "^8.2",
+    "illuminate/console": "^11.0|^12.0",
+    "illuminate/support": "^11.0|^12.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "PolarityLabs\\ObserverAgent\\": "src/"
+    }
+  },
+  "config": {
+    "allow-plugins": {
+      "pestphp/pest-plugin": true
+    }
+  },
+  "extra": {
+    "laravel": {
+      "providers": [
+        "PolarityLabs\\ObserverAgent\\ObserverServiceProvider"
+      ]
+    }
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true
+}
