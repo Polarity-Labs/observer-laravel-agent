@@ -122,16 +122,27 @@ class ObserverStartCommand extends Command
             return null;
         }
 
-        $phpVersion = Observer::AGENT_VERSION;
+        return $this->matchGoVersion($manifest, Observer::AGENT_VERSION);
+    }
 
+    protected function matchGoVersion(array $manifest, string $phpVersion): ?string
+    {
         if ($phpVersion !== 'dev' && ! empty($manifest['compatibility'])) {
+            $bestMatch = null;
+
             foreach ($manifest['compatibility'] as $entry) {
                 if (
                     version_compare($phpVersion, $entry['php_min'], '>=') &&
                     version_compare($phpVersion, $entry['php_max'], '<=')
                 ) {
-                    return $entry['go_version'];
+                    if ($bestMatch === null || version_compare($entry['php_min'], $bestMatch['php_min'], '>')) {
+                        $bestMatch = $entry;
+                    }
                 }
+            }
+
+            if ($bestMatch !== null) {
+                return $bestMatch['go_version'];
             }
         }
 

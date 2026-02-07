@@ -104,6 +104,16 @@ php artisan observer:start
 
 The agent will run continuously, collecting and sending metrics. Press `Ctrl+C` to stop.
 
+### Restart after deployment
+
+```bash
+php artisan observer:restart
+```
+
+This signals the running agent to exit cleanly. When running under Supervisor with `autorestart=true`, the agent restarts automatically and picks up the new binary.
+
+Add this to your deploy script after `composer install`.
+
 ### Test mode (single collection)
 
 ```bash

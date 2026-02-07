@@ -5,6 +5,7 @@ namespace PolarityLabs\ObserverAgent;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use PolarityLabs\ObserverAgent\Commands\ObserverMetricsCommand;
+use PolarityLabs\ObserverAgent\Commands\ObserverRestartCommand;
 use PolarityLabs\ObserverAgent\Commands\ObserverStartCommand;
 use PolarityLabs\ObserverAgent\Commands\ObserverStatusCommand;
 use PolarityLabs\ObserverAgent\Listeners\SchedulerEventSubscriber;
@@ -32,6 +33,7 @@ class ObserverServiceProvider extends ServiceProvider
 
             $this->commands([
                 ObserverMetricsCommand::class,
+                ObserverRestartCommand::class,
                 ObserverStartCommand::class,
                 ObserverStatusCommand::class,
             ]);
