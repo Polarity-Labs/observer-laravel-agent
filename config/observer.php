@@ -92,7 +92,6 @@ return [
         'logs' => env('OBSERVER_COLLECT_LOGS', true),
         'health' => env('OBSERVER_COLLECT_HEALTH', true),
 
-        // Optional collectors (disabled by default)
         'horizon' => env('OBSERVER_COLLECT_HORIZON', true),
         'scheduler' => env('OBSERVER_COLLECT_SCHEDULER', true),
     ],

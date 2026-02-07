@@ -141,15 +141,12 @@ class ObserverMetricsCommand extends Command
             $jobsPerMinute = 0.0;
 
             try {
-                $throughput = $metrics->throughputForQueue('*');
-                if (is_numeric($throughput)) {
-                    $completedJobs = (int) $throughput;
-                }
-                // Jobs per minute from recent throughput
+                $jobs = app(\Laravel\Horizon\Contracts\JobRepository::class);
+                $completedJobs = (int) $jobs->countCompleted();
+                $recentJobs = (int) $jobs->countRecent();
                 $jobsPerMinute = (float) ($metrics->jobsProcessedPerMinute() ?? 0);
-                $recentJobs = (int) ($metrics->recentlyFailed() ?? 0) + $completedJobs;
             } catch (\Throwable) {
-                // Metrics may not be available
+                // JobRepository or metrics may not be available
             }
 
             $failedJobs = 0;

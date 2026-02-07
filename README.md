@@ -68,8 +68,8 @@ OBSERVER_COLLECT_HEALTH=true
 OBSERVER_COLLECT_PROCESS=true
 OBSERVER_COLLECT_TOP_PROCESSES=true  # Top 10 processes by CPU/memory
 OBSERVER_COLLECT_SPIKE_EVENTS=true   # CPU/memory spike detection with culprit processes
-OBSERVER_COLLECT_HORIZON=false       # Enable if using Laravel Horizon
-OBSERVER_COLLECT_SCHEDULER=false     # Enable to monitor scheduler health
+OBSERVER_COLLECT_HORIZON=true        # Disable if not using Laravel Horizon
+OBSERVER_COLLECT_SCHEDULER=true      # Disable if not monitoring scheduler health
 
 # Top processes configuration
 OBSERVER_INTERVAL_TOP_PROCESSES=300        # Emit interval in seconds (default: 300)
