@@ -212,9 +212,6 @@ class ObserverStartCommand extends Command
      */
     protected function buildEnvironment(): array
     {
-        $dbConnection = config('database.default');
-        $dbPrefix = "database.connections.{$dbConnection}";
-
         return array_filter([
             'OBSERVER_API_ENDPOINT' => config('observer.api_endpoint'),
             'OBSERVER_API_KEY' => config('observer.api_key'),
@@ -264,22 +261,12 @@ class ObserverStartCommand extends Command
             'OBSERVER_DISK_AUTO_DISCOVER' => config('observer.disk_auto_discover', true) ? '1' : '0',
             'OBSERVER_DISK_EXCLUDE_TYPES' => implode(',', config('observer.disk_exclude_types', [])),
 
-            'OBSERVER_DB_CONNECTION' => $dbConnection,
-            'OBSERVER_DB_HOST' => config("{$dbPrefix}.host"),
-            'OBSERVER_DB_PORT' => (string) config("{$dbPrefix}.port"),
-            'OBSERVER_DB_DATABASE' => config("{$dbPrefix}.database"),
-            'OBSERVER_DB_USERNAME' => config("{$dbPrefix}.username"),
-            'OBSERVER_DB_PASSWORD' => config("{$dbPrefix}.password"),
-
-            'OBSERVER_REDIS_HOST' => config('database.redis.default.host'),
-            'OBSERVER_REDIS_PORT' => (string) config('database.redis.default.port'),
-            'OBSERVER_REDIS_PASSWORD' => config('database.redis.default.password'),
-            'OBSERVER_REDIS_DATABASE' => (string) config('database.redis.default.database', 0),
-
             'OBSERVER_QUEUE_CONNECTION' => config('queue.default'),
             'OBSERVER_QUEUE_NAMES' => implode(',', config('observer.queue_names', ['default'])),
 
             'OBSERVER_PHP_BINARY' => PHP_BINARY,
+
+            'OBSERVER_SYSTEM_METRICS' => config('observer.system_metrics', 'auto'),
 
             'OBSERVER_RUN_ONCE' => $this->option('once') ? '1' : '0',
         ], fn ($value) => $value !== null && $value !== '');

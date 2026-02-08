@@ -46,7 +46,7 @@ class ObserverMetricsCommand extends Command
     /**
      * Returns array of per-queue metrics in the format expected by ClickHouseService.
      *
-     * @return array<int, array{connection: string, queue: string, size: int, failed: int, jobs_per_minute: float, wait_time_seconds: float}>
+     * @return array<int, array{connection: string, queue: string, size: int, failed: int, wait_time_seconds: float}>
      */
     protected function collectQueueMetrics(): array
     {
@@ -74,23 +74,16 @@ class ObserverMetricsCommand extends Command
             $size = 0;
             $waitTimeSeconds = 0.0;
 
-            if ($connection === 'database') {
-                $row = DB::table('jobs')
-                    ->where('queue', $queueName)
-                    ->selectRaw('count(*) as size, min(available_at) as oldest_available_at')
-                    ->first();
+            try {
+                $queue = Queue::connection($connection);
+                $size = $queue->size($queueName);
 
-                $size = (int) ($row->size ?? 0);
-
-                if ($row->oldest_available_at ?? null) {
-                    $waitTimeSeconds = (float) max(0, now()->timestamp - (int) $row->oldest_available_at);
+                $oldestTimestamp = $queue->creationTimeOfOldestPendingJob($queueName);
+                if ($oldestTimestamp !== null) {
+                    $waitTimeSeconds = (float) max(0, now()->timestamp - $oldestTimestamp);
                 }
-            } else {
-                try {
-                    $size = Queue::size($queueName);
-                } catch (\Throwable) {
-                    // Queue driver may not support size()
-                }
+            } catch (\Throwable) {
+                // Queue driver may not support these methods
             }
 
             $result[] = [
@@ -98,7 +91,6 @@ class ObserverMetricsCommand extends Command
                 'queue' => $queueName,
                 'size' => $size,
                 'failed' => $failedSinceLastCollection,
-                'jobs_per_minute' => 0.0, // Not tracked
                 'wait_time_seconds' => $waitTimeSeconds,
             ];
         }
@@ -123,9 +115,16 @@ class ObserverMetricsCommand extends Command
             $metrics = app(\Laravel\Horizon\Contracts\MetricsRepository::class);
 
             $masters = $masterSupervisor->all();
-            $status = empty($masters) ? 'inactive' : 'running';
 
-            $totalProcesses = collect($masters)->filter(fn ($master) => $master->pid)->count();
+            if (empty($masters)) {
+                $status = 'inactive';
+            } else {
+                $status = collect($masters)->every(fn ($master) => $master->status === 'paused')
+                    ? 'paused'
+                    : 'running';
+            }
+
+            $totalProcesses = 0;
 
             $workloadData = $workload->get();
             $pendingJobs = 0;
@@ -134,6 +133,7 @@ class ObserverMetricsCommand extends Command
             foreach ($workloadData as $entry) {
                 $pendingJobs += $entry['length'] ?? 0;
                 $maxWaitTime = max($maxWaitTime, (float) ($entry['wait'] ?? 0));
+                $totalProcesses += $entry['processes'] ?? 0;
             }
 
             $completedJobs = 0;

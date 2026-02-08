@@ -223,4 +223,26 @@ return [
     'spike_cooldown' => env('OBSERVER_SPIKE_COOLDOWN', 60),
     'spike_top_n' => env('OBSERVER_SPIKE_TOP_N', 5),
 
+    /*
+    |--------------------------------------------------------------------------
+    | System Metrics Mode (Multi-Agent Coordination)
+    |--------------------------------------------------------------------------
+    |
+    | When multiple Laravel apps share a server, each runs its own observer
+    | agent. System metrics (CPU, memory, disk, network, process) only need
+    | to be sent once per server. This setting controls which agent sends them.
+    |
+    | Supported values:
+    |   "auto"     - File-lock-based leader election. One agent wins the lock
+    |                and sends system metrics; others send only app metrics.
+    |                If the leader dies, another agent takes over automatically.
+    |                This is the recommended default — works transparently for
+    |                both single-agent and multi-agent setups.
+    |   "enabled"  - Always send system metrics (skip election).
+    |   "disabled" - Never send system metrics (app metrics only).
+    |
+    */
+
+    'system_metrics' => env('OBSERVER_SYSTEM_METRICS', 'auto'),
+
 ];

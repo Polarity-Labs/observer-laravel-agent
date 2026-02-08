@@ -13,6 +13,7 @@ Observer is a monitoring agent that collects system metrics (CPU, memory, disk, 
 - **Process monitoring** — Top 10 processes by CPU and memory with 5-minute aggregated snapshots
 - **Spike detection** — Captures CPU/memory spikes with culprit process identification for diagnosing OOM/resource issues
 - **Laravel metrics** — Queue health, Horizon status, log error monitoring, HTTP health checks
+- **Multi-agent aware** — Automatic leader election prevents duplicate system metrics when multiple apps share a server
 - **Reliable delivery** — Buffers metrics locally if the API is unreachable
 
 ## Requirements
@@ -82,6 +83,12 @@ OBSERVER_SPIKE_MEMORY_THRESHOLD=90.0     # Memory % that triggers a spike (defau
 OBSERVER_SPIKE_COOLDOWN=60               # Seconds between spike events of the same type (default: 60)
 OBSERVER_SPIKE_TOP_N=5                   # Number of top processes to capture on spike (default: 5)
 
+# Multi-agent coordination (default: "auto")
+# auto = file-lock election, one agent sends system metrics per server
+# enabled = always send system metrics (skip election)
+# disabled = never send system metrics (app metrics only)
+OBSERVER_SYSTEM_METRICS=auto
+
 # Queue names to monitor (comma-separated, default: "default")
 OBSERVER_QUEUE_NAMES=default,emails,notifications
 ```
@@ -121,6 +128,24 @@ php artisan observer:start --once
 ```
 
 Collects metrics once and exits. Useful for testing your configuration.
+
+## Multiple Apps on One Server
+
+When multiple Laravel apps share a server, each runs its own Observer agent. System metrics (CPU, memory, disk, network) only need to be sent once per server, while app metrics (queues, logs, health checks) are unique to each app.
+
+Observer handles this automatically via file-based leader election. The first agent to start acquires a lock and becomes the **leader** (sends system + app metrics). Other agents become **followers** (send app metrics only). If the leader stops, a follower is promoted within ~10 seconds.
+
+No configuration is needed — the default `OBSERVER_SYSTEM_METRICS=auto` works transparently for both single-app and multi-app setups.
+
+To override the automatic behavior:
+
+```env
+# Force this agent to always send system metrics
+OBSERVER_SYSTEM_METRICS=enabled
+
+# Force this agent to never send system metrics
+OBSERVER_SYSTEM_METRICS=disabled
+```
 
 ## Running in Production
 
