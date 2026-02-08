@@ -104,13 +104,22 @@ return [
     | The endpoints to ping for health checks. Each endpoint can have a URL,
     | name, and optional custom headers for authentication.
     |
+    | check_from: Where to execute the check from.
+    |   - "agent" (default): The agent checks the URL from the server.
+    |   - "external": Observer SaaS pings the URL from outside your network.
+    |
+    | leader_only: Whether this check only runs on the leader agent (default: true).
+    |   Set to false to run on all agents.
+    |
     | Format:
     |   [
     |       ['url' => 'https://myapp.com/up', 'name' => 'app'],
     |       ['url' => 'https://api.myapp.com/health', 'name' => 'api', 'headers' => ['Authorization' => 'Bearer token']],
+    |       ['url' => 'https://myapp.com/up', 'name' => 'external', 'check_from' => 'external'],
     |   ]
     |
-    | The default configuration checks the standard Laravel health endpoint.
+    | Custom health checks are registered via Observer::healthCheck() and do
+    | not need to be listed here.
     |
     */
 

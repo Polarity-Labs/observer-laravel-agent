@@ -13,6 +13,9 @@ Observer is a monitoring agent that collects system metrics (CPU, memory, disk, 
 - **Process monitoring** — Top 10 processes by CPU and memory with 5-minute aggregated snapshots
 - **Spike detection** — Captures CPU/memory spikes with culprit process identification for diagnosing OOM/resource issues
 - **Laravel metrics** — Queue health, Horizon status, log error monitoring, HTTP health checks
+- **Custom health checks** — Register arbitrary PHP callbacks (DB pings, Redis checks, etc.) alongside URL checks
+- **External health checks** — Have Observer SaaS ping your endpoints from outside your network
+- **Per-check leader gating** — Control whether each health check runs on the leader agent only or on all agents
 - **Multi-agent aware** — Automatic leader election prevents duplicate system metrics when multiple apps share a server
 - **Reliable delivery** — Buffers metrics locally if the API is unreachable
 
@@ -128,6 +131,94 @@ php artisan observer:start --once
 ```
 
 Collects metrics once and exits. Useful for testing your configuration.
+
+## Health Checks
+
+Observer supports three types of health checks:
+
+### URL Health Checks (Agent)
+
+Configured in `config/observer.php`. The Go agent pings these URLs from the server:
+
+```php
+'health_endpoints' => [
+    ['url' => env('APP_URL').'/up', 'name' => 'app'],
+    ['url' => 'https://api.myapp.com/health', 'name' => 'api', 'headers' => ['Authorization' => 'Bearer token']],
+],
+```
+
+### URL Health Checks (External)
+
+Same config format, but checked by Observer SaaS from outside your network:
+
+```php
+'health_endpoints' => [
+    ['url' => 'https://myapp.com', 'name' => 'public-site', 'check_from' => 'external'],
+],
+```
+
+The agent sends the endpoint configuration to Observer SaaS, which pings the URL every minute from its own infrastructure. This verifies your app is reachable from the outside world.
+
+### Custom Health Checks
+
+Register arbitrary PHP callbacks to check anything — databases, Redis, external APIs, file systems, etc. Custom checks run inside your Laravel process (via the `observer:metrics` artisan command) rather than from the Go binary.
+
+Register checks in a service provider's `boot()` method:
+
+```php
+use PolarityLabs\ObserverAgent\Observer;
+use PolarityLabs\ObserverAgent\HealthCheckResult;
+
+public function boot(): void
+{
+    $observer = app(Observer::class);
+
+    $observer->healthCheck('redis', function () {
+        try {
+            Redis::ping();
+            return HealthCheckResult::healthy()->responseTime(1);
+        } catch (\Exception $e) {
+            return HealthCheckResult::unhealthy()->errorMessage($e->getMessage());
+        }
+    });
+
+    $observer->healthCheck('database', function () {
+        $start = hrtime(true);
+        DB::select('SELECT 1');
+        $ms = (int) ((hrtime(true) - $start) / 1_000_000);
+        return HealthCheckResult::healthy()->responseTime($ms);
+    });
+}
+```
+
+#### HealthCheckResult API
+
+```php
+// Static constructors
+HealthCheckResult::healthy();
+HealthCheckResult::unhealthy();
+HealthCheckResult::make(isHealthy: true, responseTimeMs: 42, errorMessage: null);
+
+// Chainable methods
+HealthCheckResult::healthy()->responseTime(42);
+HealthCheckResult::unhealthy()->responseTime(5000)->errorMessage('Connection refused');
+```
+
+If a callback throws an exception, Observer catches it and reports the check as unhealthy with the exception message.
+
+### Per-Check Leader Gating
+
+By default, all health checks (URL and custom) run only on the leader agent to avoid duplicate checks. Override this per-check:
+
+```php
+// Config-based (URL checks)
+['url' => 'http://localhost/up', 'name' => 'local', 'leader_only' => false],
+
+// Code-based (custom checks)
+$observer->healthCheck('redis', $callback, leaderOnly: false);
+```
+
+Set `leader_only: false` when you want every agent instance to run the check (e.g., checking a local service on each server).
 
 ## Multiple Apps on One Server
 

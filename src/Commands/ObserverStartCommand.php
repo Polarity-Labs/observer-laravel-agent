@@ -6,6 +6,8 @@ use Illuminate\Console\Command;
 use PolarityLabs\ObserverAgent\Observer;
 use Symfony\Component\Process\Process;
 
+use function collect;
+
 class ObserverStartCommand extends Command
 {
     protected $signature = 'observer:start
@@ -208,6 +210,32 @@ class ObserverStartCommand extends Command
     }
 
     /**
+     * Build the merged health endpoints array from config and custom checks.
+     *
+     * @return array<int, array{type: string, name: string, url?: string, headers?: array, check_from?: string, leader_only: bool}>
+     */
+    protected function buildHealthEndpoints(): array
+    {
+        $urlEndpoints = collect(config('observer.health_endpoints', []))->map(fn (array $ep) => [
+            'type' => 'url',
+            'name' => $ep['name'] ?? '',
+            'url' => $ep['url'] ?? '',
+            'headers' => (object) ($ep['headers'] ?? []),
+            'check_from' => $ep['check_from'] ?? 'agent',
+            'leader_only' => $ep['leader_only'] ?? true,
+        ])->toArray();
+
+        $customEndpoints = collect(app(Observer::class)->getRegisteredHealthChecks())
+            ->map(fn (array $check) => [
+                'type' => 'custom',
+                'name' => $check['name'],
+                'leader_only' => $check['leader_only'],
+            ])->toArray();
+
+        return array_merge($urlEndpoints, $customEndpoints);
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function buildEnvironment(): array
@@ -222,7 +250,7 @@ class ObserverStartCommand extends Command
 
             'OBSERVER_APP_PATH' => base_path(),
             'OBSERVER_LOG_PATH' => config('observer.log_path'),
-            'OBSERVER_HEALTH_ENDPOINTS' => json_encode(config('observer.health_endpoints', [])),
+            'OBSERVER_HEALTH_ENDPOINTS' => json_encode($this->buildHealthEndpoints()),
 
             'OBSERVER_INTERVAL_CPU' => (string) config('observer.intervals.cpu'),
             'OBSERVER_INTERVAL_MEMORY' => (string) config('observer.intervals.memory'),

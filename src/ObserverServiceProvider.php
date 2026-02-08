@@ -18,6 +18,8 @@ class ObserverServiceProvider extends ServiceProvider
             __DIR__ . '/../config/observer.php',
             'observer'
         );
+
+        $this->app->singleton(Observer::class);
     }
 
     public function boot(): void

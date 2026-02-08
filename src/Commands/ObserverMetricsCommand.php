@@ -8,12 +8,14 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use PolarityLabs\ObserverAgent\Concerns\ExtractsSchedulerTaskInfo;
+use PolarityLabs\ObserverAgent\HealthCheckResult;
+use PolarityLabs\ObserverAgent\Observer;
 
 class ObserverMetricsCommand extends Command
 {
     use ExtractsSchedulerTaskInfo;
 
-    protected $signature = 'observer:metrics';
+    protected $signature = 'observer:metrics {--role= : Agent role (leader or follower) for filtering health checks}';
 
     protected $description = 'Output Laravel metrics as JSON (used by Observer agent)';
 
@@ -25,12 +27,16 @@ class ObserverMetricsCommand extends Command
             'queue' => fn () => $this->collectQueueMetrics(),
             'horizon' => fn () => $this->collectHorizonMetrics(),
             'scheduler' => fn () => $this->collectSchedulerMetrics($schedule),
+            'custom_health' => fn () => $this->collectCustomHealthMetrics(),
         ];
 
         $data = [];
 
+        // Collectors that always run when they have data (no config toggle needed)
+        $alwaysRun = ['custom_health'];
+
         foreach ($collectors as $name => $collector) {
-            if (config("observer.collectors.{$name}")) {
+            if (in_array($name, $alwaysRun, true) || config("observer.collectors.{$name}")) {
                 $result = $collector();
                 if (! empty($result)) {
                     $data[$name] = $result;
@@ -176,6 +182,51 @@ class ObserverMetricsCommand extends Command
         } catch (\Throwable) {
             return null;
         }
+    }
+
+    /**
+     * Returns custom health check results from the Observer registry.
+     *
+     * @return array<int, array{name: string, is_healthy: bool, response_time_ms: int, status_code: int, error_message: ?string}>|null
+     */
+    protected function collectCustomHealthMetrics(): ?array
+    {
+        $observer = app(Observer::class);
+        $checks = $observer->getRegisteredHealthChecks();
+
+        if (empty($checks)) {
+            return null;
+        }
+
+        $role = $this->option('role');
+
+        $results = [];
+
+        foreach ($checks as $check) {
+            if ($role === 'follower' && $check['leader_only']) {
+                continue;
+            }
+
+            $startTime = hrtime(true);
+            $result = $observer->runHealthCheck($check['name']);
+            $elapsedMs = (int) ((hrtime(true) - $startTime) / 1_000_000);
+
+            if ($result === null) {
+                continue;
+            }
+
+            $responseTimeMs = $result->getResponseTimeMs() ?? $elapsedMs;
+
+            $results[] = [
+                'name' => $check['name'],
+                'is_healthy' => $result->isHealthy(),
+                'response_time_ms' => $responseTimeMs,
+                'status_code' => 0,
+                'error_message' => $result->getErrorMessage(),
+            ];
+        }
+
+        return ! empty($results) ? $results : null;
     }
 
     /**
