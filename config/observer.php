@@ -106,7 +106,7 @@ return [
     |
     | check_from: Where to execute the check from.
     |   - "agent" (default): The agent checks the URL from the server.
-    |   - "external": Observer SaaS pings the URL from outside your network.
+    |   - "external": Observer pings the URL from outside your network.
     |
     | leader_only: Whether this check only runs on the leader agent (default: true).
     |   Set to false to run on all agents.
@@ -227,8 +227,8 @@ return [
     |
     */
 
-    'spike_cpu_threshold' => env('OBSERVER_SPIKE_CPU_THRESHOLD', 50.0),
-    'spike_memory_threshold' => env('OBSERVER_SPIKE_MEMORY_THRESHOLD', 50.0),
+    'spike_cpu_threshold' => env('OBSERVER_SPIKE_CPU_THRESHOLD', 80.0),
+    'spike_memory_threshold' => env('OBSERVER_SPIKE_MEMORY_THRESHOLD', 80.0),
     'spike_cooldown' => env('OBSERVER_SPIKE_COOLDOWN', 60),
     'spike_top_n' => env('OBSERVER_SPIKE_TOP_N', 5),
 
